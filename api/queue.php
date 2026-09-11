@@ -36,6 +36,7 @@ $dokterFilter = parse_filter_list($mapping['dokter_filter'] ?? '');
 
 $db = db_connect();
 $today = date('Y-m-d');
+$now = date('H:i:s');
 $dayMap = [
     'Monday'    => 'SENIN',
     'Tuesday'   => 'SELASA',
@@ -48,10 +49,12 @@ $dayMap = [
 $hari = $dayMap[date('l')] ?? 'SENIN';
 
 /*
- * The display cards are driven by jadwal, not by calls.
- * A poli + dokter is shown only while today's schedule is active.
- * The latest status=2 call is attached when available; otherwise the card
- * remains visible with status=waiting.
+ * Cards are driven by today's jadwal, not by queue calls.
+ * Every configured schedule is returned so the display can explain:
+ * - BELUM MULAI : current time is before jam_mulai
+ * - KOSONG       : schedule is active but no status=2 call exists
+ * - DIPANGGIL    : schedule is active and a status=2 call exists
+ * - SELESAI      : current time is after jam_selesai
  */
 $sql = "
     SELECT
@@ -89,8 +92,6 @@ $sql = "
           )
     ) c ON c.kd_poli = j.kd_poli AND c.kd_dokter = j.kd_dokter
     WHERE j.hari_kerja = ?
-      AND j.jam_mulai <= CURTIME()
-      AND (j.jam_selesai IS NULL OR j.jam_selesai >= CURTIME())
 ";
 
 $types = 'ss';
@@ -145,22 +146,46 @@ if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         $key = $row['kd_poli'] . '|' . $row['kd_dokter'];
 
-        // Prevent duplicate cards when jadwal contains overlapping entries.
+        // Prevent duplicate cards when the same poli + doctor has multiple schedule rows.
         if (isset($seen[$key])) {
             continue;
         }
         $seen[$key] = true;
+
+        $start = $row['jam_mulai'];
+        $end = $row['jam_selesai'];
+        $isBefore = $start !== null && $now < $start;
+        $isAfter = $end !== null && $now > $end;
+
+        if ($isBefore) {
+            $scheduleStatus = 'not_started';
+            $label = 'Belum Mulai';
+            $number = null;
+        } elseif ($isAfter) {
+            $scheduleStatus = 'finished';
+            $label = 'Selesai';
+            $number = null;
+        } elseif ($row['current_number'] !== null) {
+            $scheduleStatus = 'called';
+            $label = 'Sedang Dipanggil';
+            $number = $row['current_number'];
+        } else {
+            $scheduleStatus = 'empty';
+            $label = 'Belum Ada Panggilan';
+            $number = null;
+        }
 
         $items[] = [
             'kd_poli' => $row['kd_poli'],
             'nm_poli' => $row['nm_poli'],
             'kd_dokter' => $row['kd_dokter'],
             'nm_dokter' => $row['nm_dokter'],
-            'jam_mulai' => $row['jam_mulai'],
-            'jam_selesai' => $row['jam_selesai'],
-            'current_number' => $row['current_number'] ?? null,
-            'status' => $row['current_number'] !== null ? 'called' : 'waiting',
-            'schedule_active' => true,
+            'jam_mulai' => $start,
+            'jam_selesai' => $end,
+            'current_number' => $number,
+            'status' => $scheduleStatus,
+            'label' => $label,
+            'schedule_active' => $scheduleStatus === 'called' || $scheduleStatus === 'empty',
         ];
     }
 }
@@ -172,6 +197,7 @@ echo json_encode([
     'ok' => true,
     'date' => $today,
     'hari' => $hari,
+    'time' => $now,
     'updated_at' => date('Y-m-d H:i:s'),
     'items' => $items,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
