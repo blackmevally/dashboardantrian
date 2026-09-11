@@ -8,32 +8,35 @@ header('Expires: 0');
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard Antrian — RSU Permata Medika Kebumen</title>
-<link rel="stylesheet" href="assets/css/display.css?v=1">
+<title>Informasi Antrean Poliklinik — RSU Permata Medika Kebumen</title>
+<link rel="stylesheet" href="assets/css/display.css?v=3">
+<link rel="stylesheet" href="assets/css/medical-icons.css?v=2">
 </head>
 <body>
 <div class="display">
   <header class="topbar">
     <div class="brand">
-      <small>RSU Permata Medika Kebumen</small>
-      <h1>Dashboard Antrean Pasien</h1>
-      <div class="status"><span class="dot" id="liveDot"></span><span id="live">LIVE</span></div>
+      <div class="brand-mark" aria-hidden="true">RSPM</div>
+      <div class="brand-copy">
+        <div class="eyebrow">RSU PERMATA MEDIKA KEBUMEN</div>
+        <h1>Informasi Antrean Poliklinik</h1>
+        <div class="tagline">CEPAT <span>•</span> RAMAH <span>•</span> PROFESIONAL</div>
+      </div>
     </div>
-    <div class="clock">
-      <strong id="clock">00:00:00</strong>
-      <span id="date">—</span>
+    <div class="top-right">
+      <div class="clock"><span id="date">—</span><strong id="clock">00:00:00</strong></div>
+      <div class="system-status"><span class="dot" id="liveDot"></span><strong id="live">LIVE</strong><small>TERHUBUNG DENGAN SIMRS</small></div>
     </div>
   </header>
-
   <main id="queueGrid" class="grid" aria-live="polite">
     <div class="empty"><div>Memuat data antrean…</div></div>
   </main>
-
   <footer class="footer">
-    <span>Informasi nomor antrean ruang tunggu</span>
-    <span id="updated">Menunggu update…</span>
+    <div class="pager"><button id="prevPage" type="button" aria-label="Halaman sebelumnya">‹</button><strong id="pageInfo">HALAMAN 1 / 1</strong><button id="nextPage" type="button" aria-label="Halaman berikutnya">›</button><div class="progress"><span id="progressBar"></span></div></div>
+    <div class="footer-message"><span class="footer-icon">●</span><strong>Silakan menunggu nomor Anda dipanggil</strong><span class="separator">|</span><span>Terima kasih atas kesabaran Anda</span></div>
+    <div class="footer-update"><small>UPDATE TERAKHIR</small><strong id="updated">Menunggu update…</strong></div>
   </footer>
 </div>
-<script src="assets/js/display.js?v=1"></script>
+<script src="assets/js/display.js?v=3"></script>
 </body>
 </html>
