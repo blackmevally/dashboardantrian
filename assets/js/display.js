@@ -1,45 +1,63 @@
 (function(){
 'use strict';
 const POLL_MS=3000;
-const state={items:new Map()};
+const PAGE_MS=12000;
+const PAGE_SIZE=9;
+const state={items:[],previous:new Map(),page:0,timer:null};
 const $=s=>document.querySelector(s);
 function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));}
 function clock(){const d=new Date();$('#clock').textContent=d.toLocaleTimeString('id-ID',{hour12:false});$('#date').textContent=d.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}
-function render(items){
- const grid=$('#queueGrid');
- if(!Array.isArray(items)||!items.length){
-   grid.innerHTML='<div class="empty"><div>Tidak ada jadwal poli untuk hari ini.</div></div>';
-   state.items.clear();
-   return;
- }
- const html=items.map(item=>{
+function setupShell(){
+ const header=document.querySelector('.topbar');
+ if(header){header.innerHTML='<div class="brand"><div class="brand-mark" aria-hidden="true">RSPM</div><div class="brand-copy"><div class="eyebrow">RSU PERMATA MEDIKA KEBUMEN</div><h1>Informasi Antrean Poliklinik</h1><div class="tagline">CEPAT <span>•</span> RAMAH <span>•</span> PROFESIONAL</div></div></div><div class="top-right"><div class="clock"><span id="date">—</span><strong id="clock">00:00:00</strong></div><div class="system-status"><span class="dot" id="liveDot"></span><strong id="live">LIVE</strong><small>TERHUBUNG DENGAN SIMRS</small></div></div>';}
+ const footer=document.querySelector('.footer');
+ if(footer){footer.innerHTML='<div class="pager"><button id="prevPage" type="button" aria-label="Halaman sebelumnya">‹</button><strong id="pageInfo">HALAMAN 1 / 1</strong><button id="nextPage" type="button" aria-label="Halaman berikutnya">›</button><div class="progress"><span id="progressBar"></span></div></div><div class="footer-message"><span class="footer-icon">◖</span><strong>Silakan menunggu nomor Anda dipanggil</strong><span class="separator">|</span><span>Terima kasih atas kesabaran Anda</span></div><div class="footer-update"><small>UPDATE TERAKHIR</small><strong id="updated">Menunggu update…</strong></div>';}
+ $('#prevPage')?.addEventListener('click',()=>changePage(-1));
+ $('#nextPage')?.addEventListener('click',()=>changePage(1));
+}
+function pageCount(){return Math.max(1,Math.ceil(state.items.length/PAGE_SIZE));}
+function changePage(delta){const total=pageCount();if(total<=1)return;state.page=(state.page+delta+total)%total;renderPage();restartPageTimer();}
+function restartPageTimer(){clearTimeout(state.timer);if(pageCount()>1)state.timer=setTimeout(()=>{state.page=(state.page+1)%pageCount();renderPage();restartPageTimer();},PAGE_MS);}
+function renderPage(){
+ const grid=$('#queueGrid'), total=pageCount();
+ if(!state.items.length){grid.innerHTML='<div class="empty"><div>Tidak ada jadwal poli untuk hari ini.</div></div>';return;}
+ if(state.page>=total)state.page=0;
+ const start=state.page*PAGE_SIZE, visible=state.items.slice(start,start+PAGE_SIZE);
+ const html=visible.map((item,idx)=>{
    const key=`${item.kd_poli}|${item.kd_dokter}`;
-   const prev=state.items.get(key);
+   const prev=state.previous.get(key);
    const changed=prev && prev.current_number!==item.current_number;
    const no=item.current_number||'—';
    const status=item.schedule_status||'empty';
    const label=item.status_label||'Belum Ada Panggilan';
    const schedule=item.jam_mulai?(item.jam_mulai.slice(0,5)+(item.jam_selesai?' — '+item.jam_selesai.slice(0,5):'')):'';
-   return `<article class="card status-${esc(status)}${changed?' changed':''}" data-key="${esc(key)}"><div class="poli">${esc(item.nm_poli)}</div><div class="dokter">${esc(item.nm_dokter)}</div><div class="schedule">${esc(schedule)}</div><div class="nomor${item.current_number?'':' waiting'}">${esc(no)}</div><div class="label">${esc(label)}</div></article>`;
- }).filter(Boolean).join('');
- grid.replaceChildren();
- if(html) grid.insertAdjacentHTML('beforeend',html);
- state.items.clear();items.forEach(item=>state.items.set(`${item.kd_poli}|${item.kd_dokter}`,item));
+   return `<article class="card status-${esc(status)}${changed?' changed':''}" data-key="${esc(key)}"><div class="card-head"><span class="card-index">${String(start+idx+1).padStart(2,'0')}</span><div class="poli-icon" aria-hidden="true">${status==='called'?'◉':'+'}</div><div class="card-info"><div class="poli">${esc(item.nm_poli)}</div><div class="dokter">${esc(item.nm_dokter)}</div><div class="schedule">◷ ${esc(schedule)}</div></div><div class="number-box"><small>${item.current_number?'NOMOR DIPANGGIL':'NOMOR DIPANGGIL'}</small><div class="nomor${item.current_number?'':' waiting'}">${esc(no)}</div></div></div><div class="label">${status==='called'?'◖ ':status==='finished'?'✓ ':'◷ '}${esc(label)}</div></article>`;
+ }).join('');
+ grid.replaceChildren();grid.insertAdjacentHTML('beforeend',html);
+ $('#pageInfo').textContent=`HALAMAN ${state.page+1} / ${total}`;
+ $('#prevPage').disabled=total<=1;$('#nextPage').disabled=total<=1;
+ const progress=$('#progressBar');if(progress)progress.style.width=`${((state.page+1)/total)*100}%`;
+}
+function findChangedPage(items){
+ for(let i=0;i<items.length;i++){
+   const item=items[i],key=`${item.kd_poli}|${item.kd_dokter}`,prev=state.previous.get(key);
+   if(prev && prev.current_number!==item.current_number && item.current_number){return Math.floor(i/PAGE_SIZE);}
+ }
+ return null;
 }
 async function load(){
  try{
-   const r=await fetch('api/queue.php',{cache:'no-store'});
-   if(!r.ok)throw new Error('HTTP '+r.status);
-   const data=await r.json();
-   render(data.items);
-   $('#updated').textContent='Update '+new Date(data.updated_at.replace(' ','T')).toLocaleTimeString('id-ID',{hour12:false});
-   $('#live').textContent='LIVE';
-   $('#liveDot').classList.remove('offline');
- }catch(e){
-   $('#live').textContent='OFFLINE';
-   $('#liveDot').classList.add('offline');
- }
- finally{setTimeout(load,POLL_MS)}
+   const r=await fetch('api/queue.php',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+   const data=await r.json();const items=Array.isArray(data.items)?data.items:[];
+   const changedPage=findChangedPage(items);state.items=items;
+   if(changedPage!==null)state.page=changedPage;else if(state.page>=pageCount())state.page=0;
+   renderPage();restartPageTimer();
+   const updated=data.updated_at?new Date(String(data.updated_at).replace(' ','T')):new Date();
+   $('#updated').textContent='Update '+updated.toLocaleTimeString('id-ID',{hour12:false});
+   $('#live').textContent='LIVE';$('#liveDot').classList.remove('offline');
+   state.previous.clear();items.forEach(item=>state.previous.set(`${item.kd_poli}|${item.kd_dokter}`,item));
+ }catch(e){$('#live').textContent='OFFLINE';$('#liveDot').classList.add('offline');}
+ finally{setTimeout(load,POLL_MS);}
 }
-setInterval(clock,1000);clock();load();
+setupShell();setInterval(clock,1000);clock();load();
 })();
