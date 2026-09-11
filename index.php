@@ -9,8 +9,8 @@ header('Expires: 0');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Informasi Antrean Poliklinik — RSU Permata Medika Kebumen</title>
-<link rel="stylesheet" href="assets/css/display.css?v=3">
-<link rel="stylesheet" href="assets/css/medical-icons.css?v=2">
+<link rel="stylesheet" href="assets/css/display.css?v=4">
+<link rel="stylesheet" href="assets/css/medical-icons.css?v=3">
 </head>
 <body>
 <div class="display">
@@ -37,6 +37,6 @@ header('Expires: 0');
     <div class="footer-update"><small>UPDATE TERAKHIR</small><strong id="updated">Menunggu update…</strong></div>
   </footer>
 </div>
-<script src="assets/js/display.js?v=3"></script>
+<script src="assets/js/display.js?v=4"></script>
 </body>
 </html>
