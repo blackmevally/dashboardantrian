@@ -1,0 +1,25 @@
+.poli-icon{position:relative;overflow:hidden;isolation:isolate}
+.poli-icon svg.medical-icon{width:62%;height:62%;display:block;color:#fff;fill:currentColor;stroke:currentColor;filter:drop-shadow(0 2px 4px rgba(0,0,0,.18))}
+.poli-icon:after{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(145deg,rgba(255,255,255,.22),transparent 48%);pointer-events:none;z-index:-1}
+.card.icon-surgery{--accent:#20d69b;--accent-soft:rgba(32,214,155,.18)}
+.card.icon-obgyn{--accent:#f25ca8;--accent-soft:rgba(242,92,168,.18)}
+.card.icon-internal{--accent:#2fb7ff;--accent-soft:rgba(47,183,255,.18)}
+.card.icon-pediatrics{--accent:#9b72ff;--accent-soft:rgba(155,114,255,.18)}
+.card.icon-ophthalmology{--accent:#f2b632;--accent-soft:rgba(242,182,50,.18)}
+.card.icon-ent{--accent:#19cbd7;--accent-soft:rgba(25,203,215,.18)}
+.card.icon-neurology{--accent:#ff5964;--accent-soft:rgba(255,89,100,.18)}
+.card.icon-cardiology{--accent:#19bfe8;--accent-soft:rgba(25,191,232,.18)}
+.card.icon-dental{--accent:#38d88f;--accent-soft:rgba(56,216,143,.18)}
+.card.icon-dermatology{--accent:#e879f9;--accent-soft:rgba(232,121,249,.18)}
+.card.icon-pulmonology{--accent:#f35ca8;--accent-soft:rgba(243,92,168,.18)}
+.card.icon-urology{--accent:#ff9f43;--accent-soft:rgba(255,159,67,.18)}
+.card.icon-rehab{--accent:#a879ff;--accent-soft:rgba(168,121,255,.18)}
+.card.icon-mcu{--accent:#ff6262;--accent-soft:rgba(255,98,98,.18)}
+.card.icon-oncology{--accent:#27d6a1;--accent-soft:rgba(39,214,161,.18)}
+.card[class*="icon-"] .poli-icon{background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 92%,white 8%),color-mix(in srgb,var(--accent) 48%,#062b3a 52%));box-shadow:0 0 20px var(--accent-soft),inset 0 1px rgba(255,255,255,.25)}
+.card[class*="icon-"] .poli{color:#fff}
+.card[class*="icon-"] .card-index{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 18%,transparent);color:#fff}
+.card[class*="icon-"] .queue-progress span{background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 58%,white 42%))}
+.card.status-called[class*="icon-"]{border-color:color-mix(in srgb,var(--accent) 72%,white 28%)}
+.card.status-called[class*="icon-"] .poli-icon{box-shadow:0 0 22px var(--accent-soft),0 0 7px color-mix(in srgb,var(--accent) 38%,transparent),inset 0 1px rgba(255,255,255,.25)}
+@supports not (color:color-mix(in srgb,red 50%,blue 50%)){.card[class*="icon-"] .poli-icon{background:linear-gradient(145deg,var(--accent),rgba(4,38,52,.92))}.card[class*="icon-"] .card-index{background:var(--accent-soft);border-color:var(--accent)}.card[class*="icon-"] .queue-progress span{background:var(--accent)}}
