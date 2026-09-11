@@ -2,11 +2,13 @@
 /**
  * Filter data untuk tampil di display.
  *
- * $poli_filter   : kode poli. Kosong = semua poli.
- * $dokter_filter : kode dokter. Kosong = semua dokter yang sesuai filter poli.
+ * Gunakan kode poli persis seperti pada tabel SIMRS `jadwal`.
+ * $poli_filter   : satu atau beberapa kode poli, dipisahkan koma.
+ * $dokter_filter : satu atau beberapa kode dokter, dipisahkan koma.
+ * Kosong = semua.
  */
-$poli_filter   = ""; // Kode poli
-$dokter_filter = ""; // Kode dokter (bisa dikosongkan jika ingin semua)
+$poli_filter   = "'U003','U053','INT','OBG','U0004','U0027'";
+$dokter_filter = "";
 
 return [
     'poli_filter'   => trim($poli_filter),
