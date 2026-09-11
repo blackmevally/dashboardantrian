@@ -1,5 +1,5 @@
 (function(){'use strict';
-const POLL_MS=3000,PAGE_MS=12000,PAGE_SIZE=9;
+const POLL_MS=3000,PAGE_MS=12000,PAGE_SIZE=16;
 const state={items:[],previous:new Map(),page:0,timer:null};
 const $=s=>document.querySelector(s);
 function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));}
