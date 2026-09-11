@@ -1,8 +1,14 @@
 <?php
 /**
- * Kombinasi poli + dokter yang ditampilkan di dashboard.
- * Isi dengan mapping resmi yang dipakai ruang tunggu.
+ * Filter data untuk tampil di display.
+ *
+ * $poli_filter   : kode poli. Kosong = semua poli.
+ * $dokter_filter : kode dokter. Kosong = semua dokter yang sesuai filter poli.
  */
+$poli_filter   = ""; // Kode poli
+$dokter_filter = ""; // Kode dokter (bisa dikosongkan jika ingin semua)
+
 return [
-    // ['kd_poli' => 'U0006', 'kd_dokter' => '8201232007405K'],
+    'poli_filter'   => trim($poli_filter),
+    'dokter_filter' => trim($dokter_filter),
 ];
