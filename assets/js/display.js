@@ -12,7 +12,7 @@ function render(items){
    state.items.clear();
    return;
  }
- grid.innerHTML=items.map(item=>{
+ const html=items.map(item=>{
    const key=`${item.kd_poli}|${item.kd_dokter}`;
    const prev=state.items.get(key);
    const changed=prev && prev.current_number!==item.current_number;
@@ -22,6 +22,7 @@ function render(items){
    const schedule=item.jam_mulai?(item.jam_mulai.slice(0,5)+(item.jam_selesai?' — '+item.jam_selesai.slice(0,5):'')):'';
    return `<article class="card status-${esc(status)}${changed?' changed':''}" data-key="${esc(key)}"><div class="poli">${esc(item.nm_poli)}</div><div class="dokter">${esc(item.nm_dokter)}</div><div class="schedule">${esc(schedule)}</div><div class="nomor${item.current_number?'':' waiting'}">${esc(no)}</div><div class="label">${esc(label)}</div></article>`;
  }).join('');
+ grid.innerHTML=html;
  state.items.clear();items.forEach(item=>state.items.set(`${item.kd_poli}|${item.kd_dokter}`,item));
 }
 async function load(){
