@@ -24,6 +24,34 @@ function parse_filter_list($value) {
     return array_values(array_unique($items));
 }
 
+/* Same queue-number rule used by pasienrspm/ui-v2. */
+function queue_number($noReg) {
+    if (preg_match('/(\d+)\s*$/', (string)$noReg, $m)) {
+        return (int)$m[1];
+    }
+    return null;
+}
+
+/* Same ordering contract as pasienrspm/ui-v2. */
+function sort_queue_rows(&$rows) {
+    usort($rows, function ($a, $b) {
+        $an = queue_number($a['no_reg']);
+        $bn = queue_number($b['no_reg']);
+
+        if ($an !== null && $bn !== null && $an !== $bn) {
+            return $an < $bn ? -1 : 1;
+        }
+        if ($an !== null && $bn === null) return -1;
+        if ($an === null && $bn !== null) return 1;
+
+        $aj = (string)$a['jam_reg'];
+        $bj = (string)$b['jam_reg'];
+        if ($aj !== $bj) return $aj < $bj ? -1 : 1;
+
+        return strcmp((string)$a['no_rawat'], (string)$b['no_rawat']);
+    });
+}
+
 $poliFilter   = parse_filter_list($mapping['poli_filter'] ?? '');
 $dokterFilter = parse_filter_list($mapping['dokter_filter'] ?? '');
 
@@ -37,11 +65,7 @@ $dayMap = [
 ];
 $hari = $dayMap[date('l')] ?? 'SENIN';
 
-/*
- * Source of display cards = jadwal.
- * Every schedule for today is returned, including schedules that have not
- * started or have already finished. Queue status is attached separately.
- */
+/* Public cards come from jadwal; queue state is attached separately. */
 $sql = "
     SELECT
         j.kd_poli,
@@ -49,33 +73,15 @@ $sql = "
         j.kd_dokter,
         d.nm_dokter,
         j.jam_mulai,
-        j.jam_selesai,
-        c.no_reg AS current_number
+        j.jam_selesai
     FROM jadwal j
     INNER JOIN poliklinik p ON p.kd_poli = j.kd_poli
     INNER JOIN dokter d ON d.kd_dokter = j.kd_dokter
-    LEFT JOIN (
-        SELECT r.kd_poli, r.kd_dokter, r.no_reg
-        FROM reg_periksa r
-        INNER JOIN antripoli a ON a.no_rawat = r.no_rawat
-        WHERE r.tgl_registrasi = ?
-          AND a.status = '2'
-          AND NOT EXISTS (
-              SELECT 1
-              FROM reg_periksa r2
-              INNER JOIN antripoli a2 ON a2.no_rawat = r2.no_rawat
-              WHERE r2.tgl_registrasi = r.tgl_registrasi
-                AND r2.kd_poli = r.kd_poli
-                AND r2.kd_dokter = r.kd_dokter
-                AND a2.status = '2'
-                AND (r2.jam_reg > r.jam_reg OR (r2.jam_reg = r.jam_reg AND r2.no_rawat > r.no_rawat))
-          )
-    ) c ON c.kd_poli = j.kd_poli AND c.kd_dokter = j.kd_dokter
     WHERE j.hari_kerja = ?
 ";
 
-$types = 'ss';
-$params = [$today, $hari];
+$types = 's';
+$params = [$hari];
 
 if ($poliFilter) {
     $placeholders = implode(',', array_fill(0, count($poliFilter), '?'));
@@ -100,7 +106,7 @@ if (!$stmt) {
     echo json_encode([
         'ok' => false, 'date' => $today, 'hari' => $hari,
         'updated_at' => date('Y-m-d H:i:s'), 'items' => [],
-        'error' => 'Queue query preparation failed'
+        'error' => 'Schedule query preparation failed'
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -109,7 +115,7 @@ mysqli_stmt_bind_param($stmt, $types, ...$params);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
-$items = [];
+$schedules = [];
 $seen = [];
 
 if ($result) {
@@ -117,43 +123,97 @@ if ($result) {
         $key = $row['kd_poli'] . '|' . $row['kd_dokter'];
         if (isset($seen[$key])) continue;
         $seen[$key] = true;
-
-        $mulai = $row['jam_mulai'];
-        $selesai = $row['jam_selesai'];
-
-        if ($now < $mulai) {
-            $scheduleStatus = 'before';
-            $statusLabel = 'Belum Mulai';
-            $currentNumber = null;
-        } elseif ($selesai !== null && $now > $selesai) {
-            $scheduleStatus = 'finished';
-            $statusLabel = 'Selesai';
-            $currentNumber = null;
-        } elseif ($row['current_number'] !== null) {
-            $scheduleStatus = 'called';
-            $statusLabel = 'Sedang Dipanggil';
-            $currentNumber = $row['current_number'];
-        } else {
-            $scheduleStatus = 'empty';
-            $statusLabel = 'Belum Ada Panggilan';
-            $currentNumber = null;
-        }
-
-        $items[] = [
-            'kd_poli' => $row['kd_poli'],
-            'nm_poli' => $row['nm_poli'],
-            'kd_dokter' => $row['kd_dokter'],
-            'nm_dokter' => $row['nm_dokter'],
-            'jam_mulai' => $mulai,
-            'jam_selesai' => $selesai,
-            'current_number' => $currentNumber,
-            'schedule_status' => $scheduleStatus,
-            'status_label' => $statusLabel,
-        ];
+        $schedules[] = $row;
     }
 }
 
 mysqli_stmt_close($stmt);
+
+/*
+ * Read all today's status=2 rows once and group them by doctor/poli.
+ * Status 1 remains "berikutnya" and status 3 remains passed/completed.
+ */
+$calledBySchedule = [];
+$calledSql = "
+    SELECT
+        r.kd_poli,
+        r.kd_dokter,
+        r.no_reg,
+        r.no_rawat,
+        r.jam_reg
+    FROM reg_periksa r
+    INNER JOIN antripoli a ON a.no_rawat = r.no_rawat
+    WHERE r.tgl_registrasi = ?
+      AND a.status = '2'
+";
+
+$calledStmt = mysqli_prepare($db, $calledSql);
+if ($calledStmt) {
+    mysqli_stmt_bind_param($calledStmt, 's', $today);
+    mysqli_stmt_execute($calledStmt);
+    $calledResult = mysqli_stmt_get_result($calledStmt);
+
+    if ($calledResult) {
+        while ($row = mysqli_fetch_assoc($calledResult)) {
+            $key = $row['kd_poli'] . '|' . $row['kd_dokter'];
+            if (!isset($calledBySchedule[$key])) {
+                $calledBySchedule[$key] = [];
+            }
+            $calledBySchedule[$key][] = $row;
+        }
+    }
+
+    mysqli_stmt_close($calledStmt);
+}
+
+$items = [];
+
+foreach ($schedules as $row) {
+    $key = $row['kd_poli'] . '|' . $row['kd_dokter'];
+    $calledRows = $calledBySchedule[$key] ?? [];
+    sort_queue_rows($calledRows);
+
+    /* Highest currently-called queue number = public current call. */
+    $current = !empty($calledRows) ? $calledRows[count($calledRows) - 1] : null;
+    $currentNumber = $current ? $current['no_reg'] : null;
+
+    $mulai = $row['jam_mulai'];
+    $selesai = $row['jam_selesai'];
+
+    if ($now < $mulai) {
+        $scheduleStatus = 'before';
+        $statusLabel = 'Belum Mulai';
+        $displayNumber = null;
+    } elseif ($selesai !== null && $now > $selesai) {
+        $scheduleStatus = 'finished';
+        $statusLabel = 'Selesai';
+        $displayNumber = null;
+    } elseif ($currentNumber !== null) {
+        $scheduleStatus = 'called';
+        $statusLabel = 'Sedang Dipanggil';
+        $displayNumber = $currentNumber;
+    } else {
+        $scheduleStatus = 'empty';
+        $statusLabel = 'Belum Ada Panggilan';
+        $displayNumber = null;
+    }
+
+    $items[] = [
+        'kd_poli' => $row['kd_poli'],
+        'nm_poli' => $row['nm_poli'],
+        'kd_dokter' => $row['kd_dokter'],
+        'nm_dokter' => $row['nm_dokter'],
+        'jam_mulai' => $mulai,
+        'jam_selesai' => $selesai,
+        'current_number' => $displayNumber,
+        'current_number_numeric' => $current ? queue_number($current['no_reg']) : null,
+        'current_queue_status' => $current ? '2' : null,
+        'called_total' => count($calledRows),
+        'schedule_status' => $scheduleStatus,
+        'status_label' => $statusLabel,
+    ];
+}
+
 mysqli_close($db);
 
 echo json_encode([
@@ -162,5 +222,12 @@ echo json_encode([
     'hari' => $hari,
     'server_time' => $now,
     'updated_at' => date('Y-m-d H:i:s'),
+    'queue_semantics' => [
+        'status_waiting' => '0',
+        'status_next' => '1',
+        'status_called' => '2',
+        'status_passed' => '3',
+        'current_call_rule' => 'highest_numeric_no_reg_with_status_2',
+    ],
     'items' => $items,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
