@@ -10,11 +10,7 @@ if (!is_array($mapping)) {
     $mapping = [];
 }
 
-/*
- * Supports filters such as:
- *   "'U003','U053','INT','OBG'"
- * Empty filter means no restriction.
- */
+/* Supports filters such as: "'U003','U053','INT','OBG'". */
 function parse_filter_list($value) {
     $value = trim((string)$value);
     if ($value === '') {
@@ -35,34 +31,74 @@ function parse_filter_list($value) {
     return array_values(array_unique($items));
 }
 
-$poliFilter = parse_filter_list($mapping['poli_filter'] ?? '');
+$poliFilter   = parse_filter_list($mapping['poli_filter'] ?? '');
 $dokterFilter = parse_filter_list($mapping['dokter_filter'] ?? '');
 
 $db = db_connect();
 $today = date('Y-m-d');
+$dayMap = [
+    'Monday'    => 'SENIN',
+    'Tuesday'   => 'SELASA',
+    'Wednesday' => 'RABU',
+    'Thursday'  => 'KAMIS',
+    'Friday'    => 'JUMAT',
+    'Saturday'  => 'SABTU',
+    'Sunday'    => 'AKHAD',
+];
+$hari = $dayMap[date('l')] ?? 'SENIN';
 
+/*
+ * The display cards are driven by jadwal, not by calls.
+ * A poli + dokter is shown only while today's schedule is active.
+ * The latest status=2 call is attached when available; otherwise the card
+ * remains visible with status=waiting.
+ */
 $sql = "
     SELECT
-        p.kd_poli,
+        j.kd_poli,
         p.nm_poli,
-        d.kd_dokter,
+        j.kd_dokter,
         d.nm_dokter,
-        r.no_reg,
-        a.status
-    FROM antripoli a
-    INNER JOIN reg_periksa r ON r.no_rawat = a.no_rawat
-    INNER JOIN poliklinik p ON p.kd_poli = r.kd_poli
-    INNER JOIN dokter d ON d.kd_dokter = r.kd_dokter
-    WHERE r.tgl_registrasi = ?
-      AND a.status = '2'
+        j.jam_mulai,
+        j.jam_selesai,
+        c.no_reg AS current_number
+    FROM jadwal j
+    INNER JOIN poliklinik p ON p.kd_poli = j.kd_poli
+    INNER JOIN dokter d ON d.kd_dokter = j.kd_dokter
+    LEFT JOIN (
+        SELECT
+            r.kd_poli,
+            r.kd_dokter,
+            r.no_reg
+        FROM reg_periksa r
+        INNER JOIN antripoli a ON a.no_rawat = r.no_rawat
+        WHERE r.tgl_registrasi = ?
+          AND a.status = '2'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM reg_periksa r2
+              INNER JOIN antripoli a2 ON a2.no_rawat = r2.no_rawat
+              WHERE r2.tgl_registrasi = r.tgl_registrasi
+                AND r2.kd_poli = r.kd_poli
+                AND r2.kd_dokter = r.kd_dokter
+                AND a2.status = '2'
+                AND (
+                    r2.jam_reg > r.jam_reg
+                    OR (r2.jam_reg = r.jam_reg AND r2.no_rawat > r.no_rawat)
+                )
+          )
+    ) c ON c.kd_poli = j.kd_poli AND c.kd_dokter = j.kd_dokter
+    WHERE j.hari_kerja = ?
+      AND j.jam_mulai <= CURTIME()
+      AND (j.jam_selesai IS NULL OR j.jam_selesai >= CURTIME())
 ";
 
-$types = 's';
-$params = [$today];
+$types = 'ss';
+$params = [$today, $hari];
 
 if ($poliFilter) {
     $placeholders = implode(',', array_fill(0, count($poliFilter), '?'));
-    $sql .= " AND r.kd_poli IN ($placeholders)";
+    $sql .= " AND j.kd_poli IN ($placeholders)";
     $types .= str_repeat('s', count($poliFilter));
     foreach ($poliFilter as $value) {
         $params[] = $value;
@@ -71,7 +107,7 @@ if ($poliFilter) {
 
 if ($dokterFilter) {
     $placeholders = implode(',', array_fill(0, count($dokterFilter), '?'));
-    $sql .= " AND r.kd_dokter IN ($placeholders)";
+    $sql .= " AND j.kd_dokter IN ($placeholders)";
     $types .= str_repeat('s', count($dokterFilter));
     foreach ($dokterFilter as $value) {
         $params[] = $value;
@@ -79,11 +115,7 @@ if ($dokterFilter) {
 }
 
 $sql .= "
-    ORDER BY
-        r.kd_poli ASC,
-        r.kd_dokter ASC,
-        r.jam_reg DESC,
-        r.no_rawat DESC
+    ORDER BY j.jam_mulai ASC, j.kd_poli ASC, j.kd_dokter ASC
 ";
 
 $stmt = mysqli_prepare($db, $sql);
@@ -94,6 +126,7 @@ if (!$stmt) {
     echo json_encode([
         'ok' => false,
         'date' => $today,
+        'hari' => $hari,
         'updated_at' => date('Y-m-d H:i:s'),
         'items' => [],
         'error' => 'Queue query preparation failed',
@@ -112,7 +145,7 @@ if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         $key = $row['kd_poli'] . '|' . $row['kd_dokter'];
 
-        // Keep only the newest currently-called number for each poli + dokter pair.
+        // Prevent duplicate cards when jadwal contains overlapping entries.
         if (isset($seen[$key])) {
             continue;
         }
@@ -123,8 +156,11 @@ if ($result) {
             'nm_poli' => $row['nm_poli'],
             'kd_dokter' => $row['kd_dokter'],
             'nm_dokter' => $row['nm_dokter'],
-            'current_number' => $row['no_reg'],
-            'status' => 'called',
+            'jam_mulai' => $row['jam_mulai'],
+            'jam_selesai' => $row['jam_selesai'],
+            'current_number' => $row['current_number'] ?? null,
+            'status' => $row['current_number'] !== null ? 'called' : 'waiting',
+            'schedule_active' => true,
         ];
     }
 }
@@ -135,6 +171,7 @@ mysqli_close($db);
 echo json_encode([
     'ok' => true,
     'date' => $today,
+    'hari' => $hari,
     'updated_at' => date('Y-m-d H:i:s'),
     'items' => $items,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
