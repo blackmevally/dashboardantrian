@@ -7,13 +7,18 @@ function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&
 function clock(){const d=new Date();$('#clock').textContent=d.toLocaleTimeString('id-ID',{hour12:false});$('#date').textContent=d.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}
 function render(items){
  const grid=$('#queueGrid');
- if(!Array.isArray(items)||!items.length){grid.innerHTML='<div class="empty"><div>Belum ada mapping poli/dokter yang dikonfigurasi.</div></div>';return;}
+ if(!Array.isArray(items)||!items.length){
+   grid.innerHTML='<div class="empty"><div>Tidak ada poli yang sedang aktif sesuai jadwal.</div></div>';
+   state.items.clear();
+   return;
+ }
  grid.innerHTML=items.map(item=>{
    const key=`${item.kd_poli}|${item.kd_dokter}`;
    const prev=state.items.get(key);
    const changed=prev && prev.current_number!==item.current_number;
    const no=item.current_number||'—';
-   return `<article class="card${changed?' changed':''}" data-key="${esc(key)}"><div class="poli">${esc(item.nm_poli)}</div><div class="dokter">${esc(item.nm_dokter)}</div><div class="nomor${item.current_number?'':' waiting'}">${esc(no)}</div><div class="label">${item.current_number?'Sedang Dipanggil':'Belum Ada Panggilan'}</div></article>`;
+   const label=item.current_number?'Sedang Dipanggil':'Belum Ada Panggilan';
+   return `<article class="card${changed?' changed':''}" data-key="${esc(key)}"><div class="poli">${esc(item.nm_poli)}</div><div class="dokter">${esc(item.nm_dokter)}</div><div class="nomor${item.current_number?'':' waiting'}">${esc(no)}</div><div class="label">${label}</div></article>`;
  });
  state.items.clear();items.forEach(item=>state.items.set(`${item.kd_poli}|${item.kd_dokter}`,item));
 }
