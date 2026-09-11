@@ -10,8 +10,33 @@ if (!is_array($mapping)) {
     $mapping = [];
 }
 
-$poliFilter   = isset($mapping['poli_filter']) ? trim((string)$mapping['poli_filter']) : '';
-$dokterFilter = isset($mapping['dokter_filter']) ? trim((string)$mapping['dokter_filter']) : '';
+/*
+ * Supports filters such as:
+ *   "'U003','U053','INT','OBG'"
+ * Empty filter means no restriction.
+ */
+function parse_filter_list($value) {
+    $value = trim((string)$value);
+    if ($value === '') {
+        return [];
+    }
+
+    $parts = preg_split('/\s*,\s*/', $value);
+    $items = [];
+
+    foreach ($parts as $part) {
+        $part = trim($part);
+        $part = trim($part, " \t\r\n\"'");
+        if ($part !== '') {
+            $items[] = $part;
+        }
+    }
+
+    return array_values(array_unique($items));
+}
+
+$poliFilter = parse_filter_list($mapping['poli_filter'] ?? '');
+$dokterFilter = parse_filter_list($mapping['dokter_filter'] ?? '');
 
 $db = db_connect();
 $today = date('Y-m-d');
@@ -35,16 +60,22 @@ $sql = "
 $types = 's';
 $params = [$today];
 
-if ($poliFilter !== '') {
-    $sql .= " AND r.kd_poli = ?";
-    $types .= 's';
-    $params[] = $poliFilter;
+if ($poliFilter) {
+    $placeholders = implode(',', array_fill(0, count($poliFilter), '?'));
+    $sql .= " AND r.kd_poli IN ($placeholders)";
+    $types .= str_repeat('s', count($poliFilter));
+    foreach ($poliFilter as $value) {
+        $params[] = $value;
+    }
 }
 
-if ($dokterFilter !== '') {
-    $sql .= " AND r.kd_dokter = ?";
-    $types .= 's';
-    $params[] = $dokterFilter;
+if ($dokterFilter) {
+    $placeholders = implode(',', array_fill(0, count($dokterFilter), '?'));
+    $sql .= " AND r.kd_dokter IN ($placeholders)";
+    $types .= str_repeat('s', count($dokterFilter));
+    foreach ($dokterFilter as $value) {
+        $params[] = $value;
+    }
 }
 
 $sql .= "
