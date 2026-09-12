@@ -9,16 +9,16 @@ header('Expires: 0');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard Antrean</title>
-<link rel="stylesheet" href="assets/css/display.css?v=8">
+<link rel="stylesheet" href="assets/css/display.css?v=9">
 <link rel="stylesheet" href="assets/css/medical-icons.css?v=5">
-<link rel="stylesheet" href="assets/css/premium-white.css?v=3">
+<link rel="stylesheet" href="assets/css/premium-white.css?v=4">
 <link rel="stylesheet" href="assets/css/tv-premium.css?v=2">
 </head>
 <body>
 <div class="display">
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark has-logo"><img id="instLogo" src="api/logo.php?v=1" alt="Logo instansi"></div>
+      <div class="brand-mark has-logo"><img id="instLogo" src="api/logo.php?t=0" alt="Logo instansi"></div>
       <div class="brand-copy">
         <div class="eyebrow" id="instName">Memuat nama instansi…</div>
         <h1>Informasi Antrean Poliklinik</h1>
@@ -43,17 +43,36 @@ header('Expires: 0');
 <script>
 (function(){
   'use strict';
+  var logo=document.getElementById('instLogo');
+  var nameEl=document.getElementById('instName');
+  function setLogo(src){
+    if(!src) return;
+    logo.onload=function(){logo.style.display='block';};
+    logo.onerror=function(){logo.style.display='none';};
+    logo.src=src;
+  }
   async function loadInstitution(){
     try{
       var r=await fetch('api/institution.php?t='+Date.now(),{cache:'no-store'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data=await r.json();
-      var name=(data.nama_instansi||'').trim();
-      if(name) document.getElementById('instName').textContent=name;
+      var name=String(data.nama_instansi||'').trim();
+      if(name){
+        nameEl.textContent=name;
+        document.title=name+' — Informasi Antrean';
+      }
+      if(data.logo){
+        setLogo('data:'+(data.logo_mime||'image/png')+';base64,'+data.logo);
+      }else{
+        setLogo('api/logo.php?t='+Date.now());
+      }
     }catch(e){
-      document.getElementById('instName').textContent='RSU PERMATA MEDIKA KEBUMEN';
+      nameEl.textContent='RSU PERMATA MEDIKA KEBUMEN';
+      setLogo('api/logo.php?t='+Date.now());
+      if(window.console) console.warn('Institution API:',e);
     }
   }
+  setLogo('api/logo.php?t='+Date.now());
   loadInstitution();
 })();
 </script>
