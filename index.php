@@ -9,9 +9,10 @@ header('Expires: 0');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Informasi Antrean Poliklinik — RSU Permata Medika Kebumen</title>
-<link rel="stylesheet" href="assets/css/display.css?v=4">
-<link rel="stylesheet" href="assets/css/medical-icons.css?v=3">
-<link rel="stylesheet" href="assets/css/premium-white.css?v=1">
+<link rel="stylesheet" href="assets/css/display.css?v=5">
+<link rel="stylesheet" href="assets/css/medical-icons.css?v=4">
+<link rel="stylesheet" href="assets/css/premium-white.css?v=2">
+<link rel="stylesheet" href="assets/css/tv-premium.css?v=1">
 </head>
 <body>
 <div class="display">
@@ -22,6 +23,6 @@ header('Expires: 0');
   <main id="queueGrid" class="grid" aria-live="polite"><div class="empty"><div>Memuat data antrean…</div></div></main>
   <footer class="footer"><div class="pager"><button id="prevPage" type="button" aria-label="Halaman sebelumnya">‹</button><strong id="pageInfo">HALAMAN 1 / 1</strong><button id="nextPage" type="button" aria-label="Halaman berikutnya">›</button><div class="progress"><span id="progressBar"></span></div></div><div class="footer-message"><span class="footer-icon">●</span><strong>Silakan menunggu nomor Anda dipanggil</strong><span class="separator">|</span><span>Terima kasih atas kesabaran Anda</span></div><div class="footer-update"><small>UPDATE TERAKHIR</small><strong id="updated">Menunggu update…</strong></div></footer>
 </div>
-<script src="assets/js/display.js?v=4"></script>
+<script src="assets/js/display.js?v=5"></script>
 </body>
 </html>
