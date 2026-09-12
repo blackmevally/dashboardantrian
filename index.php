@@ -9,16 +9,16 @@ header('Expires: 0');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard Antrean</title>
-<link rel="stylesheet" href="assets/css/display.css?v=10">
-<link rel="stylesheet" href="assets/css/medical-icons.css?v=5">
-<link rel="stylesheet" href="assets/css/premium-white.css?v=5">
-<link rel="stylesheet" href="assets/css/tv-premium.css?v=2">
+<link rel="stylesheet" href="assets/css/display.css?v=11">
+<link rel="stylesheet" href="assets/css/medical-icons.css?v=6">
+<link rel="stylesheet" href="assets/css/premium-white.css?v=6">
+<link rel="stylesheet" href="assets/css/tv-premium.css?v=3">
 </head>
 <body>
 <div class="display">
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark has-logo" id="brandMark"><img id="instLogo" src="api/logo.php?t=0" alt="Logo instansi"></div>
+      <div class="brand-mark" id="brandMark"><img id="instLogo" src="api/logo.php?t=0" alt="Logo instansi"></div>
       <div class="brand-copy">
         <div class="eyebrow" id="instName">Memuat nama instansi…</div>
         <h1>Informasi Antrean Poliklinik</h1>
@@ -37,47 +37,57 @@ header('Expires: 0');
     <div class="footer-update"><small>UPDATE TERAKHIR</small><strong id="updated">Menunggu update…</strong></div>
   </footer>
 </div>
-<script src="assets/js/display.js?v=7"></script>
-<script src="assets/js/call-alert-fix.js?v=1"></script>
-<script src="assets/js/page-slider-fix.js?v=1"></script>
+<script src="assets/js/display.js?v=8"></script>
+<script src="assets/js/call-alert-fix.js?v=2"></script>
+<script src="assets/js/page-slider-fix.js?v=2"></script>
 <script>
 (function(){
   'use strict';
   var logo=document.getElementById('instLogo');
   var nameEl=document.getElementById('instName');
   var mark=document.getElementById('brandMark');
+
+  function setName(value){
+    value=String(value||'').trim();
+    if(nameEl && value){
+      nameEl.textContent=value;
+      document.title=value+' — Informasi Antrean';
+    }
+  }
+
   function setLogo(src){
-    if(!src) return;
+    if(!logo || !src) return;
     logo.onload=function(){
       logo.style.display='block';
-      mark.classList.add('has-logo');
+      if(mark) mark.classList.add('has-logo');
     };
     logo.onerror=function(){
       logo.style.display='none';
-      mark.classList.remove('has-logo');
+      if(mark) mark.classList.remove('has-logo');
     };
     logo.src=src;
   }
+
   async function loadInstitution(){
     try{
       var r=await fetch('api/institution.php?t='+Date.now(),{cache:'no-store'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       var data=await r.json();
-      var name=String(data.nama_instansi||'').trim();
-      if(name){
-        nameEl.textContent=name;
-        document.title=name+' — Informasi Antrean';
-      }
+      setName(data.nama_instansi);
       if(data.logo){
         setLogo('data:'+(data.logo_mime||'image/jpeg')+';base64,'+data.logo);
       }else{
         setLogo('api/logo.php?t='+Date.now());
       }
     }catch(e){
-      nameEl.textContent='RSU PERMATA MEDIKA KEBUMEN';
+      setName('RSU PERMATA MEDIKA KEBUMEN');
       setLogo('api/logo.php?t='+Date.now());
       if(window.console) console.warn('Institution API:',e);
     }
+  }
+
+  if(logo && logo.complete && logo.naturalWidth>0 && mark){
+    mark.classList.add('has-logo');
   }
   loadInstitution();
 })();
