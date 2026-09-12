@@ -9,7 +9,7 @@ header('Expires: 0');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard Antrean</title>
-<link rel="stylesheet" href="assets/css/display.css?v=7">
+<link rel="stylesheet" href="assets/css/display.css?v=8">
 <link rel="stylesheet" href="assets/css/medical-icons.css?v=5">
 <link rel="stylesheet" href="assets/css/premium-white.css?v=3">
 <link rel="stylesheet" href="assets/css/tv-premium.css?v=2">
@@ -18,7 +18,7 @@ header('Expires: 0');
 <div class="display">
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true"><img id="instLogo" alt="Logo" hidden></div>
+      <div class="brand-mark has-logo"><img id="instLogo" src="api/logo.php?v=1" alt="Logo instansi"></div>
       <div class="brand-copy">
         <div class="eyebrow" id="instName">Memuat nama instansi…</div>
         <h1>Informasi Antrean Poliklinik</h1>
@@ -43,15 +43,6 @@ header('Expires: 0');
 <script>
 (function(){
   'use strict';
-  function b64ToBlobUrl(b64, mime){
-    if(!b64) return '';
-    try{
-      var binary=atob(b64.replace(/\s/g,''));
-      var len=binary.length, bytes=new Uint8Array(len);
-      for(var i=0;i<len;i++) bytes[i]=binary.charCodeAt(i);
-      return URL.createObjectURL(new Blob([bytes],{type:mime||'image/png'}));
-    }catch(e){ return ''; }
-  }
   async function loadInstitution(){
     try{
       var r=await fetch('api/institution.php?t='+Date.now(),{cache:'no-store'});
@@ -59,11 +50,6 @@ header('Expires: 0');
       var data=await r.json();
       var name=(data.nama_instansi||'').trim();
       if(name) document.getElementById('instName').textContent=name;
-      if(data.logo){
-        var logo=document.getElementById('instLogo');
-        var url=b64ToBlobUrl(data.logo,data.logo_mime||'image/png');
-        if(url){ logo.src=url; logo.hidden=false; logo.parentNode.classList.add('has-logo'); }
-      }
     }catch(e){
       document.getElementById('instName').textContent='RSU PERMATA MEDIKA KEBUMEN';
     }
