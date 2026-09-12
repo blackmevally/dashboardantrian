@@ -22,5 +22,6 @@ header('Expires: 0');
 </div>
 <script src="assets/js/display.js?v=6"></script>
 <script src="assets/js/call-alert-fix.js?v=1"></script>
+<script src="assets/js/page-slider-fix.js?v=1"></script>
 </body>
 </html>
