@@ -9,16 +9,16 @@ header('Expires: 0');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard Antrean</title>
-<link rel="stylesheet" href="assets/css/display.css?v=9">
+<link rel="stylesheet" href="assets/css/display.css?v=10">
 <link rel="stylesheet" href="assets/css/medical-icons.css?v=5">
-<link rel="stylesheet" href="assets/css/premium-white.css?v=4">
+<link rel="stylesheet" href="assets/css/premium-white.css?v=5">
 <link rel="stylesheet" href="assets/css/tv-premium.css?v=2">
 </head>
 <body>
 <div class="display">
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark has-logo"><img id="instLogo" src="api/logo.php?t=0" alt="Logo instansi"></div>
+      <div class="brand-mark has-logo" id="brandMark"><img id="instLogo" src="api/logo.php?t=0" alt="Logo instansi"></div>
       <div class="brand-copy">
         <div class="eyebrow" id="instName">Memuat nama instansi…</div>
         <h1>Informasi Antrean Poliklinik</h1>
@@ -45,10 +45,17 @@ header('Expires: 0');
   'use strict';
   var logo=document.getElementById('instLogo');
   var nameEl=document.getElementById('instName');
+  var mark=document.getElementById('brandMark');
   function setLogo(src){
     if(!src) return;
-    logo.onload=function(){logo.style.display='block';};
-    logo.onerror=function(){logo.style.display='none';};
+    logo.onload=function(){
+      logo.style.display='block';
+      mark.classList.add('has-logo');
+    };
+    logo.onerror=function(){
+      logo.style.display='none';
+      mark.classList.remove('has-logo');
+    };
     logo.src=src;
   }
   async function loadInstitution(){
@@ -62,7 +69,7 @@ header('Expires: 0');
         document.title=name+' — Informasi Antrean';
       }
       if(data.logo){
-        setLogo('data:'+(data.logo_mime||'image/png')+';base64,'+data.logo);
+        setLogo('data:'+(data.logo_mime||'image/jpeg')+';base64,'+data.logo);
       }else{
         setLogo('api/logo.php?t='+Date.now());
       }
@@ -72,7 +79,6 @@ header('Expires: 0');
       if(window.console) console.warn('Institution API:',e);
     }
   }
-  setLogo('api/logo.php?t='+Date.now());
   loadInstitution();
 })();
 </script>
