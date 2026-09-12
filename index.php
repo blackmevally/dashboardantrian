@@ -30,7 +30,7 @@ $institutionNameHtml = htmlspecialchars($institutionName, ENT_QUOTES, 'UTF-8');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= $institutionNameHtml ?> — Informasi Antrean</title>
-<link rel="stylesheet" href="assets/css/display.css?v=12">
+<link rel="stylesheet" href="assets/css/display.css?v=13">
 <link rel="stylesheet" href="assets/css/medical-icons.css?v=7">
 <link rel="stylesheet" href="assets/css/premium-white.css?v=7">
 <link rel="stylesheet" href="assets/css/tv-premium.css?v=4">
@@ -61,6 +61,6 @@ $institutionNameHtml = htmlspecialchars($institutionName, ENT_QUOTES, 'UTF-8');
 <script src="assets/js/display.js?v=8"></script>
 <script src="assets/js/call-alert-fix.js?v=2"></script>
 <script src="assets/js/page-slider-fix.js?v=2"></script>
-<script src="assets/js/identity-fix.js?v=1"></script>
+<script src="assets/js/identity-fix.js?v=3"></script>
 </body>
 </html>
